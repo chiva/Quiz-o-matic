@@ -33,7 +33,8 @@ void setup(){
   TV.begin(PAL,120,96);
   TV.select_font(font6x8);
   TV.clear_screen();
-  TV.println("Quiz-o-matic");
+  //TV.println("Quiz-o-matic");
+  intro();
   TV.delay(3000);
 }
 
@@ -56,7 +57,6 @@ void loop(){
   Serial.println("Valencia");
   marcarJugador(player);
   esperarTodos();
-  TV.delay(300);
   limpiaPantalla();
   marcarJugador(player);
   TV.println(0,0,"Valencia");
@@ -149,4 +149,14 @@ void marcarJugador(byte player){
 void limpiaPantalla(){
   TV.clear_screen();
   mostrarPuntuaciones();
+}
+
+void intro(){
+  char titulo[] = "Quiz-O-rama";
+  byte w = sizeof(titulo)*6/sizeof(char);
+  for(byte i=0;i<TV.vres()-8;i++){
+    TV.print((TV.hres() - w)/2,i,titulo);
+    TV.delay(50);
+    TV.clear_screen();
+  }
 }
