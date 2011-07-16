@@ -1,3 +1,4 @@
+#include <SD.h>
 #include <TVout.h>
 #include <fontALL.h>
 
@@ -7,6 +8,13 @@
 #define PUNT_SEPAR 30
 #define W_MARCADO 14
 #define H_MARCADO 9
+#if defined(__AVR_ATmega1280__) || defined(__AVR_ATmega2560__)
+  #define PIN_PULS_INI 56
+  #define PIN_PULS_FIN 59
+#else
+  #define PIN_PULS_INI 16
+  #define PIN_PULS_FIN 19
+#endif
 
 TVout TV;
 byte puntuacion[]={0,0,0,0};
@@ -15,82 +23,89 @@ void setup(){
   Serial.begin(9600);
   //Los pulsadores para los juegadores, se conectarán a:
   //A2=jugador1, A3=jugador2, etc.
-  for (int i=16;i<=19;i++){
+  for (int i=PIN_PULS_INI;i<=PIN_PULS_FIN;i++){
     pinMode(i, INPUT);
   }
   //Activamos pull-up
-  for (int i=16;i<=19;i++){
+  for (int i=PIN_PULS_INI;i<=PIN_PULS_FIN;i++){
     digitalWrite(i, HIGH);
   }
   TV.begin(PAL,120,96);
   TV.select_font(font6x8);
   TV.clear_screen();
   TV.println("Quiz-o-matic");
-  delay(3000);
+  TV.delay(3000);
 }
 
 void loop(){
   byte player;
-  boolean respuesta;
+  boolean respuesta,resultado;
 
-
-  TV.clear_screen();
-  TV.println("En que ciudad se realiza la Campus Party 2011?");
+  limpiaPantalla();
+  TV.println(0,0,"En que ciudad se realiza la Campus Party 2011?");
   Serial.println("En que ciudad se realiza la Campus Party 2011?");
-  mostrarPuntuaciones();
   player = jugador();
   Serial.print("Responde: ");
   Serial.println(player,DEC);
   marcarJugador(player);
   Serial.println(player,DEC);
   esperarTodos();
-  while(digitalRead(player+15)==HIGH);
-  TV.clear_screen();
-  TV.println("Valencia");
+  while(digitalRead(player+(PIN_PULS_INI-1))==HIGH);
+  limpiaPantalla();
+  TV.println(0,0,"Valencia");
   Serial.println("Valencia");
-  mostrarPuntuaciones();
   marcarJugador(player);
   esperarTodos();
   TV.delay(300);
-  check(player);
-  TV.clear_screen();
-  mostrarPuntuaciones();
-  TV.delay(2000);
+  limpiaPantalla();
+  marcarJugador(player);
+  TV.println(0,0,"Valencia");
+  Serial.println("Valencia");
+  resultado = check(player);
+  if (resultado) { masuno(player); }
+  TV.delay(1000);
+  limpiaPantalla();
   esperarTodos();
 }
 
 byte jugador(){
   for(;;){
-    for(byte i=16;i<=19;i++){
+    for(byte i=PIN_PULS_INI;i<=PIN_PULS_FIN;i++){
       if (digitalRead(i)==LOW){
-        return i-15;
+        return i-(PIN_PULS_INI-1);
       }
     }
   }
 }
 
-void check(byte player){
+boolean check(byte player){
   byte pulsado;
   pulsado = jugador();
   if (pulsado!=player){
     puntuacion[player-1] += 1;
     Serial.println("Acerto!");
     TV.println("Acerto!");
+    return true;
   }
   else{
     Serial.println("Fallo!");
     TV.println("Fallo!");
+    return false;
   }
 }
 
 void esperarJugador(byte player){
-  while(digitalRead(player+15)==LOW);
+  while(digitalRead(player+(PIN_PULS_INI-1))==LOW);
 }
 
 void esperarTodos(){
-  for(;;){
-    if ((digitalRead(16)==HIGH) && (digitalRead(17)==HIGH) && (digitalRead(18)==HIGH) && (digitalRead(19)==HIGH)){
-      return;
+  boolean suelto = false;
+  while(!suelto){
+    suelto = true;
+    for(int i=PIN_PULS_INI;i<=PIN_PULS_FIN;i++){
+      if (digitalRead(i)==LOW){
+        suelto = false;
+      }
     }
   }
 }
@@ -98,28 +113,40 @@ void esperarTodos(){
 void mostrarPuntuaciones(){
   TV.print(PUNT_OFFSET,LINEA1,"P1");
   TV.print(PUNT_OFFSET+PUNT_SEPAR,LINEA1,"P2");
-  TV.print(PUNT_OFFSET+PUNT_SEPAR*2,LINEA1,"P3");  
+  TV.print(PUNT_OFFSET+PUNT_SEPAR*2,LINEA1,"P3");
   TV.print(PUNT_OFFSET+PUNT_SEPAR*3,LINEA1,"P4");
-  TV.print(PUNT_OFFSET,LINEA2,puntuacion[0],DEC);
-  TV.print(PUNT_OFFSET+PUNT_SEPAR,LINEA2,puntuacion[1],DEC);
-  TV.print(PUNT_OFFSET+PUNT_SEPAR*2,LINEA2,puntuacion[2],DEC);
-  TV.print(PUNT_OFFSET+PUNT_SEPAR*3,LINEA2,puntuacion[3],DEC);
+  for(int i=0;i<4;i++){
+    TV.print(PUNT_OFFSET+PUNT_SEPAR*i,LINEA2,puntuacion[i],DEC);
+  }
+}
+
+void printMasuno(byte player){
+  TV.print(PUNT_OFFSET+PUNT_SEPAR*(player-1)+10,LINEA2,"+1");
+}
+
+void masuno(byte player){
+  printMasuno(player);
+  TV.delay(1000);
 }
 
 void marcarJugador(byte player){
   switch (player){
-    case 1:
-      TV.draw_rect(PUNT_OFFSET-2,LINEA1-2,W_MARCADO-1,H_MARCADO,WHITE);
-      break;
-    case 2:
-      TV.draw_rect(PUNT_OFFSET-2+PUNT_SEPAR,LINEA1-2,W_MARCADO,H_MARCADO,WHITE);
-      break;
-    case 3:
-      TV.draw_rect(PUNT_OFFSET-2+PUNT_SEPAR*2,LINEA1-2,W_MARCADO,H_MARCADO,WHITE);
-      break;
-    case 4:
-      TV.draw_rect(PUNT_OFFSET-2+PUNT_SEPAR*3,LINEA1-2,W_MARCADO,H_MARCADO,WHITE);
-      break;
+  case 1:
+    TV.draw_rect(PUNT_OFFSET-2,LINEA1-2,W_MARCADO-1,H_MARCADO,WHITE);
+    break;
+  case 2:
+    TV.draw_rect(PUNT_OFFSET-2+PUNT_SEPAR,LINEA1-2,W_MARCADO,H_MARCADO,WHITE);
+    break;
+  case 3:
+    TV.draw_rect(PUNT_OFFSET-2+PUNT_SEPAR*2,LINEA1-2,W_MARCADO,H_MARCADO,WHITE);
+    break;
+  case 4:
+    TV.draw_rect(PUNT_OFFSET-2+PUNT_SEPAR*3,LINEA1-2,W_MARCADO,H_MARCADO,WHITE);
+    break;
   }
 }
 
+void limpiaPantalla(){
+  TV.clear_screen();
+  mostrarPuntuaciones();
+}
