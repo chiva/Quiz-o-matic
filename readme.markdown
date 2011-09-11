@@ -1,0 +1,1 @@
+La documentación de este proyecto se encuentra en la [Wiki](https://github.com/arduinocamp/Quiz-o-matic/wiki), que también incluye la explicación del funcionamiento de una [ronda](https://github.com/arduinocamp/Quiz-o-matic/wiki/Ronda).
